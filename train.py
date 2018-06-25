@@ -279,7 +279,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
     """
     killer = GracefulKiller()
     env, obs_dim, act_dim = init_gym(env_name)
-    print("GOOD")
+    print("Env loaded.")
     obs_dim += 1  # add 1 to obs dimension for time step feature (see run_episode())
     now = datetime.utcnow().strftime("%b-%d_%H:%M:%S")  # create unique directories
     logger = Logger(logname=env_name, now=now)
@@ -291,7 +291,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
     # run a few episodes of untrained policy to initialize scaler:
     run_policy(env, policy, scaler, logger, episodes=5)
     episode = 0
-    print("GOOD")
+    print("Running episodes...")
     while episode < num_episodes:
         trajectories = run_policy(env, policy, scaler, logger, episodes=batch_size)
         episode += len(trajectories)
@@ -299,11 +299,12 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         add_disc_sum_rew(trajectories, gamma)  # calculated discounted sum of Rs
         try:
             add_gae(trajectories, gamma, lam)  # calculate advantage
-            print('skipping...')
+            # concatenate all episodes into single NumPy arrays
+            observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
         except:
+            print('skipping...')    
             continue
-        # concatenate all episodes into single NumPy arrays
-        observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
+
         # add various stats to training log:
         log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
         policy.update(observes, actions, advantages, logger)  # update policy
