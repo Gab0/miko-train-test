@@ -320,20 +320,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
                 break
             killer.kill_now = False
 
-        # concatenate all episodes into single NumPy arrays
-        try:
-            observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
-            # add various stats to training log:
-            log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
-            policy.update(observes, actions, advantages, logger)  # update policy
-            val_func.fit(observes, disc_sum_rew, logger)  # update value function
-            logger.write(display=True)  # write logger results to file and stdout
-            if killer.kill_now:
-                if input('Terminate training (y/[n])? ') == 'y':
-                    break
-                killer.kill_now = False
-        except:
-            print('Failed to build trajectories.')
+
 
     logger.close()
     policy.close_sess()

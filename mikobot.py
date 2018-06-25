@@ -18,7 +18,7 @@ class ForwardServoWalker(RoboschoolForwardWalker):
         if self.frame < 20:
             return
         elif self.frame == 20:
-            self.no_death = 'no_death' in self._spec.tags
+            self.no_death = 'no_death' in self.spec.tags
 
         for n, j in enumerate(self.ordered_joints):
             an = float(np.clip(a[n], -1, +1))
