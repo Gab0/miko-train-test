@@ -94,7 +94,10 @@ def run_episode(env, policy, scaler, animate=False):
     scale, offset = scaler.get()
     scale[-1] = 1.0  # don't scale time step feature
     offset[-1] = 0.0  # don't offset time step feature
-    while not done:
+
+    max_episode_length = 200
+    ep = 0
+    while not done and ep < max_episode_length:
         if animate:
             env.render()
         obs = obs.astype(np.float32).reshape((1, -1))
@@ -109,7 +112,7 @@ def run_episode(env, policy, scaler, animate=False):
             reward = np.asscalar(reward)
         rewards.append(reward)
         step += 1e-3  # increment time step feature
-
+        ep += 1
     return (np.concatenate(observes), np.concatenate(actions),
             np.array(rewards, dtype=np.float64), np.concatenate(unscaled_obs))
 
