@@ -306,7 +306,6 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         except:
             print('skipping...')    
             continue
-<<<<<<< HEAD
 
         # add various stats to training log:
         log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
@@ -317,7 +316,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
             if input('Terminate training (y/[n])? ') == 'y':
                 break
             killer.kill_now = False
-=======
+
         # concatenate all episodes into single NumPy arrays
         try:
             observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
@@ -332,7 +331,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
                 killer.kill_now = False
         except:
             print('Failed to build trajectories.')
->>>>>>> c71535be9574d1b4d7c5f04d1b0c96ad09cdfb1e
+
     logger.close()
     policy.close_sess()
     val_func.close_sess()
