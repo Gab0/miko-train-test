@@ -32,6 +32,9 @@ class Policy(object):
         self._build_graph()
         self._init_session()
 
+        #with tf.variable_scope("trainable_variables", reuse=True):
+        #    x = tf.get_variable('means')
+        #    print(x)
     def _build_graph(self):
         """ Build and initialize TensorFlow graph """
         self.g = tf.Graph()
@@ -219,3 +222,9 @@ class Policy(object):
     def close_sess(self):
         """ Close TensorFlow session """
         self.sess.close()
+
+    def load_weights(self):
+        self.saver.restore('policy.ckpt')
+
+    def save_weights(self):
+        self.saver.save('policy.ckpt')

@@ -1,11 +1,10 @@
 #!/bin/python
 
 from mikobot import MiKoBot
-from OpenGL import GLU
 
 import gym.envs.registration as reg
 import gym
-from mikobot import MiKoBot
+
 
 reg.register("MiKo-v1",
              reward_threshold=2500,

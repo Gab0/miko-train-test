@@ -36,9 +36,9 @@ from datetime import datetime
 import os
 import argparse
 import signal
-import assembleEnvironment
 from OpenGL import GLU
-
+import time
+import assembleEnvironment
 
 class GracefulKiller:
     """ Gracefully exit program on CTRL-C """
@@ -71,7 +71,7 @@ def init_gym(env_name):
     return env, obs_dim, act_dim
 
 
-def run_episode(env, policy, scaler, animate=False):
+def run_episode(env, policy, scaler, animate=False, max_episode_length=None):
     """ Run single episode with option to animate
 
     Args:
@@ -95,9 +95,11 @@ def run_episode(env, policy, scaler, animate=False):
     scale[-1] = 1.0  # don't scale time step feature
     offset[-1] = 0.0  # don't offset time step feature
 
-    max_episode_length = 200
     ep = 0
-    while not done and ep < max_episode_length:
+    while not done:
+        if max_episode_length:
+            if ep > max_episode_length:
+                break
         if animate:
             env.render()
         obs = obs.astype(np.float32).reshape((1, -1))
@@ -117,7 +119,7 @@ def run_episode(env, policy, scaler, animate=False):
             np.array(rewards, dtype=np.float64), np.concatenate(unscaled_obs))
 
 
-def run_policy(env, policy, scaler, logger, episodes):
+def run_policy(env, policy, scaler, logger, episodes, max_frames=None):
     """ Run policy and collect data for a minimum of min_steps and min_episodes
 
     Args:
@@ -137,7 +139,9 @@ def run_policy(env, policy, scaler, logger, episodes):
     total_steps = 0
     trajectories = []
     for e in range(episodes):
-        observes, actions, rewards, unscaled_obs = run_episode(env, policy, scaler)
+        observes, actions, rewards, unscaled_obs = run_episode(env, policy,
+                                                               scaler,
+                                                               max_episode_length=max_frames)
         total_steps += observes.shape[0]
         trajectory = {'observes': observes,
                       'actions': actions,
@@ -223,7 +227,8 @@ def add_gae(trajectories, gamma, lam):
             print(str(e))
             print("WARNING: failure on trajectory reward calc for GAE")
             trajectory['advantages'] = 0
-            
+
+
 def build_train_set(trajectories):
     """
 
@@ -269,7 +274,8 @@ def log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode
                 })
 
 
-def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, policy_logvar):
+def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size,
+         hid1_mult, policy_logvar, max_frames, load_and_run):
     """ Main training loop
 
     Args:
@@ -292,13 +298,24 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
     # env = wrappers.Monitor(env, aigym_path, force=True)
     scaler = Scaler(obs_dim)
     val_func = NNValueFunction(obs_dim, hid1_mult)
-    policy = Policy(obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar)
+    policy = Policy(obs_dim, act_dim, kl_targ, hid1_mult,
+                    policy_logvar)
+
     # run a few episodes of untrained policy to initialize scaler:
     run_policy(env, policy, scaler, logger, episodes=5)
+
+
+    if load_and_run:
+        val_func.load_weights()
+        while True:
+            run_episode(env, policy, scaler, animate=True)
+        exit()
     episode = 0
     print("Running episodes...")
     while episode < num_episodes:
-        trajectories = run_policy(env, policy, scaler, logger, episodes=batch_size)
+        episode_startime = time.time()
+        trajectories = run_policy(env, policy, scaler, logger,
+                                  episodes=batch_size, max_frames=max_frames)
         episode += len(trajectories)
         add_value(trajectories, val_func)  # add estimated values to episodes
         add_disc_sum_rew(trajectories, gamma)  # calculated discounted sum of Rs
@@ -306,8 +323,9 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
             add_gae(trajectories, gamma, lam)  # calculate advantage
             # concatenate all episodes into single NumPy arrays
             observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
-        except:
-            print('skipping...')    
+        except Exception as e:
+            print(e)
+            print('skipping...')
             continue
 
         # add various stats to training log:
@@ -319,7 +337,12 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
             if input('Terminate training (y/[n])? ') == 'y':
                 break
             killer.kill_now = False
+        print("Batch took %i seconds to run." % (time.time() - episode_startime))
 
+        if not episode % 1000:
+            val_func.save_weights()
+
+    run_episode(env, policy, scaler, animate=True)
 
 
     logger.close()
@@ -352,6 +375,10 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--policy_logvar', type=float,
                         help='Initial policy log-variance (natural log of variance)',
                         default=-1.0)
+    parser.add_argument('-f', '--max_frames', type=int,
+                        help='Max frames per episode', default=0)
+    parser.add_argument('-r', '--load_and_run', type=int,
+                        help='Load saved session and run', default=0)
 
     args = parser.parse_args()
     main(**vars(args))

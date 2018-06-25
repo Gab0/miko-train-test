@@ -27,6 +27,7 @@ class NNValueFunction(object):
         self.sess = tf.Session(graph=self.g)
         self.sess.run(self.init)
 
+
     def _build_graph(self):
         """ Construct TensorFlow graph, including loss function, init op and train op """
         self.g = tf.Graph()
@@ -59,8 +60,19 @@ class NNValueFunction(object):
             optimizer = tf.train.AdamOptimizer(self.lr)
             self.train_op = optimizer.minimize(self.loss)
             self.init = tf.global_variables_initializer()
+
         self.sess = tf.Session(graph=self.g)
         self.sess.run(self.init)
+
+    def save_weights(self):
+        with self.g.as_default():
+            # print(self.g.get_all_collection_keys())
+            # allVariables = self.g.get_collection_ref("variables")
+            tf.train.Saver().save(self.sess, './miko.ckpt')
+
+    def load_weights(self):
+        with self.g.as_default():
+            tf.train.Saver().restore(self.sess, './miko.ckpt')
 
     def fit(self, x, y, logger):
         """ Fit model to current data batch + previous data batch
