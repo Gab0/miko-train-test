@@ -297,7 +297,11 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         episode += len(trajectories)
         add_value(trajectories, val_func)  # add estimated values to episodes
         add_disc_sum_rew(trajectories, gamma)  # calculated discounted sum of Rs
-        add_gae(trajectories, gamma, lam)  # calculate advantage
+        try:
+            add_gae(trajectories, gamma, lam)  # calculate advantage
+            print('skipping...')
+        except:
+            continue
         # concatenate all episodes into single NumPy arrays
         observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
         # add various stats to training log:
