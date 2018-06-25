@@ -1,0 +1,3 @@
+Sat Jun 23 21:51:22 2018
+ERROR: Could not open activation key file /home/gabs/.mujoco/mjkey.txt
+
