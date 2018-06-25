@@ -18,7 +18,7 @@ class ForwardServoWalker(RoboschoolForwardWalker):
         if self.frame < 20:
             return
         elif self.frame == 20:
-            self.no_death = 'no_death' in self.spec.tags
+            self.no_death = 'no_death' in self._spec.tags
 
         for n, j in enumerate(self.ordered_joints):
             an = float(np.clip(a[n], -1, +1))
@@ -28,10 +28,10 @@ class ForwardServoWalker(RoboschoolForwardWalker):
             low, high, pwm, kp, kd = self.servo_settings[label]
 
             p = (an + 1) / 2.0 * (high - low) + low
-            #p = an * (high - low) + low
+
             j.set_servo_target(p, kp, kd, self.power*pwm)
 
-    def step(self, a):
+    def _step(self, a):
         if not self.scene.multiplayer:  # if multiplayer, action first applied to all robots, then global step() called, then _step() for all robots with the same actions
             self.apply_action(a)
             self.scene.global_step()
@@ -39,7 +39,7 @@ class ForwardServoWalker(RoboschoolForwardWalker):
         state = self.calc_state()  # also calculates self.joints_at_limit
 
         alive = float(self.alive_bonus(state[0]+self.initial_z, self.body_rpy[1]))   # state[0] is body height above ground, body_rpy[1] is pitch
-        done = alive < 0# and not self.no_death
+        done = alive < 0 and not self.no_death
         if not np.isfinite(state).all():
             print("~INF~", state)
             done = True
@@ -50,11 +50,10 @@ class ForwardServoWalker(RoboschoolForwardWalker):
 
         jump_cost = 0.0
         air_feet = 0
-        for i, f in enumerate(self.feet):
+        for i,f in enumerate(self.feet):
             contact_names = set(x.name for x in f.contact_list())
             #print("CONTACT OF '%s' WITH %s" % (f.name, ",".join(contact_names)) )
-            self.feet_contact[i] = 1.0 \
-                if (self.foot_ground_object_names & contact_names) else 0.0
+            self.feet_contact[i] = 1.0 if (self.foot_ground_object_names & contact_names) else 0.0
 
         air_feet = len(self.feet_contact) - np.sum(self.feet_contact)
 
@@ -136,8 +135,7 @@ class MiKoBot(ForwardServoWalkerMujocoXML):
     servo_settings = {'hip': (-np.pi/2, np.pi/2, 1, 0.08, 1), 'ankle': (0.35, 0, 1.5, 0.15, 1.3)}
 
     def __init__(self):
-        ForwardServoWalkerMujocoXML.__init__(self, "miko.xml", "torso",
-                                             action_dim=8, obs_dim=10, power=100)
+        ForwardServoWalkerMujocoXML.__init__(self, "miko.xml", "torso", action_dim=8, obs_dim=10, power=200)
 
     def alive_bonus(self, z, _):
         if abs(self.body_xyz[1]) > 2:
