@@ -37,6 +37,8 @@ import os
 import argparse
 import signal
 import assembleEnvironment
+from OpenGL import GLU
+
 
 class GracefulKiller:
     """ Gracefully exit program on CTRL-C """
@@ -284,7 +286,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
     now = datetime.utcnow().strftime("%b-%d_%H:%M:%S")  # create unique directories
     logger = Logger(logname=env_name, now=now)
     aigym_path = os.path.join('/tmp', env_name, now)
-    env = wrappers.Monitor(env, aigym_path, force=True)
+    # env = wrappers.Monitor(env, aigym_path, force=True)
     scaler = Scaler(obs_dim)
     val_func = NNValueFunction(obs_dim, hid1_mult)
     policy = Policy(obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar)
@@ -299,22 +301,29 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         add_disc_sum_rew(trajectories, gamma)  # calculated discounted sum of Rs
         add_gae(trajectories, gamma, lam)  # calculate advantage
         # concatenate all episodes into single NumPy arrays
-        observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
-        # add various stats to training log:
-        log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
-        policy.update(observes, actions, advantages, logger)  # update policy
-        val_func.fit(observes, disc_sum_rew, logger)  # update value function
-        logger.write(display=True)  # write logger results to file and stdout
-        if killer.kill_now:
-            if input('Terminate training (y/[n])? ') == 'y':
-                break
-            killer.kill_now = False
+        try:
+            observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
+            # add various stats to training log:
+            log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
+            policy.update(observes, actions, advantages, logger)  # update policy
+            val_func.fit(observes, disc_sum_rew, logger)  # update value function
+            logger.write(display=True)  # write logger results to file and stdout
+            if killer.kill_now:
+                if input('Terminate training (y/[n])? ') == 'y':
+                    break
+                killer.kill_now = False
+        except:
+            print('Failed to build trajectories.')
     logger.close()
     policy.close_sess()
     val_func.close_sess()
 
 
 if __name__ == "__main__":
+    import tensorflow as tf
+    opt = tf.RunOptions()
+    opt.trace_level = tf.RunOptions.FULL_TRACE
+
     parser = argparse.ArgumentParser(description=('Train policy on OpenAI Gym environment '
                                                   'using Proximal Policy Optimizer'))
     parser.add_argument('env_name', type=str, help='OpenAI Gym environment name')
