@@ -217,7 +217,8 @@ def add_gae(trajectories, gamma, lam):
         except Exception as e:
             print(str(e))
             print("WARNING: failure on trajectory reward calc for GAE")
-
+            trajectory['advantages'] = 0
+            
 def build_train_set(trajectories):
     """
 
